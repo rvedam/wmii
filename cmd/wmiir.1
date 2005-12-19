@@ -1,0 +1,71 @@
+.TH WMIIR 1 wmii-3
+.SH NAME
+wmiir \- window manager improved 2 remote
+.SH SYNOPSIS
+.B wmiir
+.RB [ \-s
+.IR socketfile ]
+.I action
+.I action_arg
+[...]
+.br
+.B wmiir
+.RB [ \-s
+.IR socketfile ]
+.B \-f
+.br
+.B wmiir
+.B \-v
+.SH DESCRIPTION
+.SS Overview
+.B wmiir
+is a client to access wmii* fileservers for the command line and
+scripts. It can be used to configure wmii(1).
+.SS Options
+.TP
+.BI \-s " socketfile"
+lets you specify the socketfile to which
+.B wmiir
+a connection will be established. If the environment variable
+.B WMIIR_SOCKET
+is set and points to a socket file, wmiir will use that file, if this
+option is not supplied.
+.TP
+.B \-f
+reads from stdin, useful for interactive wmiir sessions or for
+scripts that write/read a bunch of data, because this speeds things up
+due to missing process creation/destruction, ie., a hack.
+.TP
+.B \-v
+prints version information to stderr, then exits.
+.TP
+The syntax of the actions is as follows:
+.TP
+.B create <path/file> [<value>]
+creates file
+.TP
+.B write  <file> <value>
+writes value to a file
+.TP
+.B read   <path/file>
+reads file or directory contents
+.TP
+.B remove <path/file>
+removes file or directory tree
+.SH ENVIRONMENT
+.TP
+WMIIR_SOCKET
+See above.
+.SH EXAMPLES
+.TP
+$ wmiir read /
+This gives you an idea about what the wmii filesystem currently looks like.
+.TP
+$ wmiir write /wm/ctl quit
+.SH SEE ALSO
+.BR wmiibar (1),
+.BR wmiifs (1),
+.BR wmii (1),
+.BR wmiiwm (1),
+.BR wmiikeys (1),
+.BR wmiimenu (1)
