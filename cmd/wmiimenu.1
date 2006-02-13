@@ -1,0 +1,28 @@
+.TH WMIIMENU 1 wmii-3
+.SH NAME
+wmiimenu \- window manager improved 2 menu
+.SH SYNOPSIS
+.B wmiimenu
+.B \-s
+.I socketfile
+.SH DESCRIPTION
+.SS Overview
+.B wmiimenu
+is a generic, highly customizable, and efficient menu for the X Window System,
+originally designed for
+.BR wmii (1).
+It supports arbitrary, user defined menu contents, which get printed to stdout when selected.
+.SS Options
+.TP
+.B \-v
+prints version information to stderr, then exits.
+.SS Customization
+.B wmiimenu
+is customized by feeding it a list of newline-separated items from stdin.
+.SH SEE ALSO
+.BR wmiibar (1),
+.BR wmiifs (1),
+.BR wmii (1),
+.BR wmiiwm (1),
+.BR wmiikeys (1),
+.BR wmiir (1)
