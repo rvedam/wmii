@@ -1,0 +1,30 @@
+#!/usr/local/plan9/bin/rc
+# periodically print date and load average to the bar
+
+PIDFILE=/tmp/ns.$USER.$DISPLAY/statuspid
+
+if(test -r $PIDFILE) {
+    kill -2 `{cat $PIDFILE} >[2]/dev/null
+}
+if (~ $1 stop) exit
+echo $pid >$PIDFILE
+
+xwrite /bar/new/colors $WMII_NORMCOLORS
+lab=`{wmiir read /bar|maxlab}
+
+# install signal handler for artificial sigexit:
+fn sigint {
+    if(test -f $PIDFILE && ~ `{cat $PIDFILE} $pid)
+        rm -f $PIDFILE
+    wmiir remove /bar/$lab
+    exit
+}
+
+fn statustext {
+    # if you need a formatted date, use awk
+    echo `{date} `{uptime | sed 's/.*://; s/,//g'}
+}
+
+while(text=`{statustext} xwrite /bar/$lab/data $"text){
+    sleep 2
+}
