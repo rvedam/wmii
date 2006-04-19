@@ -1,0 +1,413 @@
+/*
+ * (C)opyright MMIV-MMVI Anselm R. Garbe <garbeam at gmail dot com>
+ * (C)opyright MMVI      Sander van Dijk <a dot h dot vandijk at gmail dot com>
+ * See LICENSE file for license details.
+ */
+
+#include <ctype.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
+#include <X11/Xlib.h>
+#include <X11/cursorfont.h>
+#include <X11/Xutil.h>
+#include <X11/keysym.h>
+
+#include <blitz.h>
+#include <cext.h>
+
+VECTOR(ItemVector, char *);
+static Bool done = False;
+static int ret = 0;
+static char text[4096];
+static Color selcolor;
+static Color normcolor;
+static Display *dpy;
+static Window win;
+static XRectangle mrect;
+static int screen;
+static ItemVector allitem = {0};
+static ItemVector item = {0};
+static int sel = -1;
+static unsigned int nextoff = 0;
+static unsigned int prevoff = 0;
+static unsigned int curroff = 0;
+static unsigned int cmdw = 0;
+static Draw draw = { 0 };
+static const int seek = 30;		/* 30px */
+
+static void draw_menu(void);
+static void handle_kpress(XKeyEvent * e);
+
+static char version[] = "wmiimenu - " VERSION ", (C)opyright MMIV-MMVI Anselm R. Garbe\n";
+
+static Vector *
+item2vector(ItemVector *iv)
+{
+	return (Vector *) iv;
+}
+
+static void
+usage()
+{
+	fprintf(stderr, "%s", "usage: wmiimenu [-v]\n");
+	exit(1);
+}
+
+static void
+update_offsets()
+{
+	unsigned int i;
+	unsigned int w = cmdw + 2 * seek;
+
+	if(!item.size)
+		return;
+
+	for(i = curroff; i < item.size; i++) {
+		w += XTextWidth(draw.font, item.data[i], strlen(item.data[i])) + mrect.height;
+		if(w > mrect.width)
+			break;
+	}
+	nextoff = i;
+
+	w = cmdw + 2 * seek;
+	for(i = curroff; i > 0; i--) {
+		w += XTextWidth(draw.font, item.data[i], strlen(item.data[i])) + mrect.height;
+		if(w > mrect.width)
+			break;
+	}
+	prevoff = i;
+}
+
+static unsigned int
+update_items(char *pattern)
+{
+	unsigned int plen = strlen(pattern);
+	int i;
+
+	curroff = prevoff = nextoff = 0;
+	sel = -1;
+
+	while(item.size)
+		cext_vdetach(item2vector(&item), item.data[0]);
+
+	for(i = 0; i < allitem.size; i++)
+		if(!plen || !strncmp(pattern, allitem.data[i], plen)) 
+			cext_vattach(item2vector(&item), allitem.data[i]);
+	for(i = 0; i < allitem.size; i++)
+		if(plen && strncmp(pattern, allitem.data[i], plen)
+				&& strstr(allitem.data[i], pattern))
+			cext_vattach(item2vector(&item), allitem.data[i]);
+	if(item.size)
+		sel = 0;
+
+	update_offsets();
+	return item.size;
+}
+
+/* creates draw structs for menu mode drawing */
+static void
+draw_menu()
+{
+	unsigned int i, offx = 0;
+
+	draw.rect = mrect;
+	draw.rect.x = 0;
+	draw.rect.y = 0;
+	draw.color = normcolor;
+	draw.data = nil;
+	blitz_drawlabel(dpy, &draw);
+
+	/* print command */
+	draw.align = WEST;
+	draw.data = text;
+	if(cmdw && item.size)
+		draw.rect.width = cmdw;
+	offx += draw.rect.width;
+	blitz_drawlabel(dpy, &draw);
+
+	draw.align = CENTER;
+	if(item.size) {
+		draw.color = normcolor;
+		draw.data = prevoff < curroff ? "<" : nil;
+		draw.rect.x = offx;
+		draw.rect.width = seek;
+		offx += draw.rect.width;
+		blitz_drawlabel(dpy, &draw);
+
+		/* determine maximum items */
+		for(i = curroff; i < nextoff; i++) {
+			draw.data = item.data[i];
+			draw.rect.x = offx;
+			draw.rect.width = XTextWidth(draw.font, draw.data,
+					strlen(draw.data)) + mrect.height;
+			offx += draw.rect.width;
+			if(sel == i) {
+				draw.color = selcolor;
+				blitz_drawlabel(dpy, &draw);
+				blitz_drawborder(dpy, &draw);
+			} else {
+				draw.color = normcolor;
+				blitz_drawlabel(dpy, &draw);
+			}
+		}
+
+		draw.color = normcolor;
+		draw.data = item.size > nextoff ? ">" : nil;
+		draw.rect.x = mrect.width - seek;
+		draw.rect.width = seek;
+		blitz_drawlabel(dpy, &draw);
+	}
+	XCopyArea(dpy, draw.drawable, win, draw.gc, 0, 0, mrect.width,
+			mrect.height, 0, 0);
+	XSync(dpy, False);
+}
+
+static void
+handle_kpress(XKeyEvent * e)
+{
+	KeySym ksym;
+	char buf[32];
+	int num;
+	unsigned int len = strlen(text);
+
+	buf[0] = 0;
+	num = XLookupString(e, buf, sizeof(buf), &ksym, 0);
+
+	if(IsFunctionKey(ksym) || IsKeypadKey(ksym)
+			|| IsMiscFunctionKey(ksym) || IsPFKey(ksym)
+			|| IsPrivateKeypadKey(ksym))
+		return;
+
+	/* first check if a control mask is omitted */
+	if(e->state & ControlMask) {
+		switch (ksym) {
+		case XK_H:
+		case XK_h:
+			ksym = XK_BackSpace;
+			break;
+		case XK_I:
+		case XK_i:
+			ksym = XK_Tab;
+			break;
+		case XK_J:
+		case XK_j:
+			ksym = XK_Return;
+			break;
+		case XK_N:
+		case XK_n:
+			ksym = XK_Right;
+			break;
+		case XK_P:
+		case XK_p:
+			ksym = XK_Left;
+			break;
+		case XK_U:
+		case XK_u:
+			text[0] = 0;
+			update_items(text);
+			draw_menu();
+			return;
+			break;
+		case XK_bracketleft:
+			ksym = XK_Escape;
+			break;
+		default:	/* ignore other control sequences */
+			return;
+			break;
+		}
+	}
+	switch (ksym) {
+	case XK_Left:
+		if(sel <= 0)
+			return;
+		sel--;
+		break;
+	case XK_Tab:
+		if(!item.size)
+			return;
+		cext_strlcpy(text, item.data[sel], sizeof(text));
+		update_items(text);
+		break;
+	case XK_Right:
+		if(sel < 0 || (sel + 1 == item.size))
+			return;
+		sel++;
+		break;
+	case XK_Return:
+		if(text)
+			fprintf(stdout, "%s", text);
+		else if(sel >= 0)
+			fprintf(stdout, "%s", item.data[sel]);
+		fflush(stdout);
+		done = True;
+		break;
+	case XK_Escape:
+		ret = 1;
+		done = True;
+		break;
+	case XK_BackSpace:
+		if(len) {
+			unsigned int i = len;
+			if(i) {
+				int prev_nitem;
+				do
+					text[--i] = 0;
+				while((prev_nitem = item.size) && i &&
+						prev_nitem == update_items(text));
+			}
+			update_items(text);
+		}
+		break;
+	default:
+		if((num == 1) && !iscntrl((int) buf[0])) {
+			buf[num] = 0;
+			if(len > 0)
+				cext_strlcat(text, buf, sizeof(text));
+			else
+				cext_strlcpy(text, buf, sizeof(text));
+			update_items(text);
+		}
+	}
+	if(sel >= 0) {
+		if(sel == curroff - 1) {
+			curroff = prevoff;
+			update_offsets();
+		} else if((sel == nextoff) && (item.size > nextoff)) {
+			curroff = nextoff;
+			update_offsets();
+		}
+	}
+	draw_menu();
+}
+
+void
+read_allitems()
+{
+	char *maxname = 0, *p, buf[1024];
+	unsigned int len = 0, max = 0;
+
+	while(fgets(buf, sizeof(buf), stdin)) {
+		len = strlen(buf);
+		if (buf[len - 1] == '\n') /* there might be no \n after the last item */
+			buf[len - 1] = 0; /* removing \n */
+		p = strdup(buf);
+		if(max < len) {
+			maxname = p;
+			max = len;
+		}
+		cext_vattach(item2vector(&allitem), p);
+	}
+
+	if(maxname)
+		cmdw = XTextWidth(draw.font, maxname, max) + mrect.height;
+}
+
+int
+main(int argc, char *argv[])
+{
+	int i;
+	XSetWindowAttributes wa;
+	char *fontstr, *selcolstr, *normcolstr;
+	XEvent ev;
+
+	/* command line args */
+	for(i = 1; (i < argc) && (argv[i][0] == '-'); i++) {
+		switch (argv[i][1]) {
+		case 'v':
+			fprintf(stdout, "%s", version);
+			exit(0);
+			break;
+		default:
+			usage();
+			break;
+		}
+	}
+
+	dpy = XOpenDisplay(0);
+	if(!dpy) {
+		fprintf(stderr, "%s", "wmiimenu: cannot open display\n");
+		exit(1);
+	}
+	screen = DefaultScreen(dpy);
+
+	/* set font and colors */
+	fontstr = getenv("WMII_FONT");
+	if (!fontstr)
+		fontstr = strdup(BLITZ_FONT);
+	draw.font = blitz_getfont(dpy, fontstr);
+	normcolstr = getenv("WMII_NORMCOLORS");
+	if (!normcolstr || strlen(normcolstr) != 23)
+		normcolstr = strdup(BLITZ_NORMCOLORS);
+	blitz_loadcolor(dpy, screen, normcolstr, &normcolor);
+	selcolstr = getenv("WMII_SELCOLORS");
+	if (!selcolstr || strlen(selcolstr) != 23)
+		selcolstr = strdup(BLITZ_SELCOLORS);
+	blitz_loadcolor(dpy, screen, selcolstr, &selcolor);
+
+	wa.override_redirect = 1;
+	wa.background_pixmap = ParentRelative;
+	wa.event_mask = ExposureMask | ButtonPressMask | KeyPressMask
+		| SubstructureRedirectMask | SubstructureNotifyMask;
+
+	mrect.width = DisplayWidth(dpy, screen);
+	mrect.height = draw.font->ascent + draw.font->descent + 4;
+	mrect.y = DisplayHeight(dpy, screen) - mrect.height;
+	mrect.x = 0;
+
+	win = XCreateWindow(dpy, RootWindow(dpy, screen), mrect.x, mrect.y,
+			mrect.width, mrect.height, 0, DefaultDepth(dpy, screen),
+			CopyFromParent, DefaultVisual(dpy, screen),
+			CWOverrideRedirect | CWBackPixmap | CWEventMask, &wa);
+	XDefineCursor(dpy, win, XCreateFontCursor(dpy, XC_xterm));
+	XSync(dpy, False);
+
+	/* pixmap */
+	draw.gc = XCreateGC(dpy, win, 0, 0);
+	draw.drawable = XCreatePixmap(dpy, win, mrect.width, mrect.height,
+			DefaultDepth(dpy, screen));
+
+	XSync(dpy, False);
+	read_allitems();
+
+	text[0] = 0;
+	update_items(text);
+	XMapRaised(dpy, win);
+	draw_menu();
+	XSync(dpy, False);
+
+	while(XGrabKeyboard
+			(dpy, RootWindow(dpy, screen), True, GrabModeAsync,
+			 GrabModeAsync, CurrentTime) != GrabSuccess)
+		usleep(1000);
+
+	/* main event loop */
+
+	while(!XNextEvent(dpy, &ev)) {
+		switch (ev.type) {
+			case KeyPress:
+				handle_kpress(&ev.xkey);
+				break;
+			case Expose:
+				if(ev.xexpose.count == 0) {
+					draw_menu();
+				}
+				break;
+			default:
+				break;
+		}
+		if(done)
+			break;
+	}
+
+	XFreePixmap(dpy, draw.drawable);
+	XFreeGC(dpy, draw.gc);
+	XDestroyWindow(dpy, win);
+	XCloseDisplay(dpy);
+
+	return ret;
+}
