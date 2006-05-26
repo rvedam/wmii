@@ -1,0 +1,15 @@
+#!/bin/sh
+# start wmiiwm and wait for its termination
+
+wmiiwm -c || exit 1
+
+SOCKET=`mktemp /tmp/.wmii.address.$DISPLAY.XXXXXX`
+PATH=$PATH:$HOME/.wmii-4:CONFPREFIX/wmii-4 export PATH
+WMII_ADDRESS=unix!$SOCKET export WMII_ADDRESS
+
+wmiiwm -a $WMII_ADDRESS &
+wmiiwmpid=$!
+mkdir $HOME/.wmii-4 2>/dev/null && welcome &
+wmiirc &
+wait $wmiiwmpid
+rm -f $SOCKET
