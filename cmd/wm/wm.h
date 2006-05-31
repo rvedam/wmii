@@ -217,7 +217,7 @@ int idx_of_area(Area *a);
 int idx_of_area_id(View *t, unsigned short id);
 void select_area(Area *a, char *arg);
 void send_to_area(Area *to, Area *from, Client *c);
-void attach_to_area(Area *a, Client *c);
+void attach_to_area(Area *a, Client *c, Bool send);
 void detach_from_area(Area *a, Client *c);
 Bool is_of_area(Area *a, Client *c);
 Client *sel_client_of_area(Area *a);
@@ -300,7 +300,7 @@ void do_mouse_resize(Client *c,BlitzAlign align);
 void grab_mouse(Window w, unsigned long mod, unsigned int button);
 void ungrab_mouse(Window w, unsigned long mod, unsigned int button);
 void snap_rect(XRectangle *rects, int num, XRectangle *current,
-               BlitzAlign *mask, int snap);
+               BlitzAlign mask, int snap);
 
 /* rule.c */
 void update_rules(RuleVector *rule, const char *data);

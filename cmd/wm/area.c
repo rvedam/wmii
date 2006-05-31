@@ -134,7 +134,7 @@ send_to_area(Area *to, Area *from, Client *c)
 {
 	c->revert = from;
 	detach_from_area(from, c);
-	attach_to_area(to, c);
+	attach_to_area(to, c, True);
 	focus_client(c, True);
 }
 
@@ -142,7 +142,6 @@ static void
 place_client(Area *a, Client *c)
 {
 	static unsigned int mx, my;
-	static BlitzAlign align = CENTER;
 	static Bool *field = nil;
 	Bool fit = False;
 	unsigned int i, j, k, x, y, maxx, maxy, dx, dy, cx, cy, diff, num = 0;
@@ -230,13 +229,13 @@ place_client(Area *a, Client *c)
 		f->rect.y = a->rect.y + (random() % (diff ? diff : 1));
 	}
 
-	snap_rect(rects, num, &f->rect, &align, snap);
+	snap_rect(rects, num, &f->rect, CENTER, snap);
 	if(rects)
 		free(rects);
 }
 
 void
-attach_to_area(Area *a, Client *c)
+attach_to_area(Area *a, Client *c, Bool send)
 {
 	View *v = a->view;
 	unsigned int h = 0, aidx = idx_of_area(a);
@@ -249,10 +248,10 @@ attach_to_area(Area *a, Client *c)
 			scale_column(a, a->rect.height - h);
 	}
 
-	if(aidx) { /* column */
+	if(!send && aidx) { /* column */
 		unsigned int nc = ncol_of_view(v);
 		if(v->area.data[1]->frame.size && nc && nc > v->area.size - 1) {
-			a = create_area(v, ++v->sel);
+			a = new_column(v, v->sel + 1);
 			arrange_view(v);
 		}
 	}
