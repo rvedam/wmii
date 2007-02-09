@@ -1,0 +1,2 @@
+#!/bin/sh
+exec ixpc -a "$WMII_ADDRESS" $@
