@@ -1,0 +1,12 @@
+3.6
+* Working grab boxes
+* Grow(and shrink?) ctl commands
+* Switch to mk for building
+
+4.0
+* Get rid of colmodes
+* (Multi line) Tag bars
+* Resizable managed area
+* Regex-based tag strings
+* New dmenu(with real cursor and using Bio)
+* Use libbio, libfmt, libregex9
