@@ -983,8 +983,7 @@ apply_tags(Client *c, const char *tags) {
 		else
 		if(!strcmp(buf+n, "!") || !strcmp(buf+n, "sel"))
 			cur = screen->sel->name;
-		else
-		if(!Mbsearch(buf+n, badtags, bsstrcmp))
+		else if(!Mbsearch(buf+n, badtags, bsstrcmp))
 			cur = buf+n;
 
 		n = i + 1;

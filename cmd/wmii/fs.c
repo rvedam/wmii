@@ -198,7 +198,7 @@ write_to_buf(Ixp9Req *r, char **buf, uint *len, uint max) {
 
 	*len = offset + count;
 	if(max == 0)
-		*buf = erealloc((void*)*buf, *len + 1);
+		*buf = erealloc(*buf, *len + 1);
 
 	p = *buf;
 
@@ -604,7 +604,7 @@ fs_read(Ixp9Req *r) {
 
 		offset = 0;
 		size = r->ifcall.count;
-		if(size > IXP_MAX_MSG)
+		if(size > r->fid->iounit)
 			size = r->fid->iounit;
 		buf = emallocz(size);
 		m = ixp_message(buf, size, MsgPack);
@@ -659,7 +659,7 @@ fs_read(Ixp9Req *r) {
 			respond(r, nil);
 			return;
 		case FsFRctl:
-			buf = readctl_root();
+			buf = root_readctl();
 			write_buf(r, buf, strlen(buf));
 			respond(r, nil);
 			return;
@@ -740,7 +740,6 @@ fs_write(Ixp9Req *r) {
 		return;
 	case FsFBar:
 		i = strlen(f->p.bar->buf);
-		/* Why the explicit cast? Ask gcc. */
 		p = f->p.bar->buf;
 		write_to_buf(r, &p, &i, 279);
 		r->ofcall.count = i - r->ifcall.offset;

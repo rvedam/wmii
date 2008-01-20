@@ -42,7 +42,6 @@ update_rules(Rule **rule, const char *data) {
 	char *value_end = value + sizeof(value) - 1;
 	char *r, *v;
 	const char *p;
-	char c;
 	
 	SET(r);
 	SET(v);
@@ -57,10 +56,6 @@ update_rules(Rule **rule, const char *data) {
 	state = IGNORE;
 	for(p = data; (c = *p); p++)
 		switch(state) {
-		case COMMENT:
-			if(c == '\n')
-				state = IGNORE;
-			break;
 		case IGNORE:
 			if(c == '#')
 				state = COMMENT;
@@ -80,7 +75,6 @@ update_rules(Rule **rule, const char *data) {
 			else if(c == '/') {
 				*r = 0;
 				state = IGNORE;
-				break;
 			}
 			if(r < regex_end)
 				*r++ = c;
