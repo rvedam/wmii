@@ -1,0 +1,223 @@
+\documentclass[letterpaper,oneside]{scrbook}
+
+\usepackage{txfonts}
+
+\usepackage{fontspec}
+\usepackage{xunicode}
+\usepackage{xltxtra}
+
+\usepackage{fancyvrb}
+\usepackage[top=1in,bottom=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{makeidx}
+\usepackage{xcolor}
+\usepackage[xetex,breaklinks,colorlinks,linkcolor=black]{hyperref}
+
+\let\EA=\expandafter
+
+\newif\ifexpandfragments
+\newif\ifdefinefragments
+
+%% Indexes
+\makeindex
+\let\primary=\textbf
+
+\setmainfont[Mapping=tex-text, Numbers=OldStyle]{Palatino LT Std}
+\def\lining{\addfontfeature{Numbers=Lining}}
+
+\let\primary=\textbf
+
+\def\titlebar#1{%
+  \begin{center}\includegraphics[width=5.5in]{#1.png}\end{center}}
+
+\def\man#1#2{#2\textbf{(#1)}}
+
+\makeatletter
+
+%% Key specs
+\def\key#1{{\small$\langle$\lining#1\/$\rangle$}}
+\let\<=<
+\catcode`\<=\active
+\def<#1>{\key{#1}}
+
+%% Display ‹...› and «...» as text in left and right pointing
+%% angle brackets. I use «» and ‹› because my terminal doesn't
+%% display left and right pointing angle brackets properly, and
+%% Xorg's compose maps don't provide them, anyway.
+\def\«{«}\def\‹{‹}
+\catcode`\«=\active
+\catcode`\‹=\active
+\def‹#1›{$\langle${\itshape#1}$\rangle$}
+\def«#1»{$\langle\langle${\itshape#1}$\rangle\rangle$}
+
+\catcode`\∅=\active
+\def∅{\box0}
+\def«{%
+  \let\dofragment@target=\hyperlink%
+  \@ifnextchar*\dofragment@@\dofragment@}
+\def\dofragment@@*{%
+  \let\dofragment@target=\hypertarget%
+  \dofragment@}
+\def\dofragment@#1»{%
+  \setbox0=\hbox{$\langle\langle${\itshape#1}$\rangle\rangle$}%
+  \ifexpandfragments%
+    \def\a{\sp\sp\comment \boxzero^^J}%
+    \begingroup%
+      \def\ { }\xdef\@frag@name{#1}%
+    \endgroup%
+    \UseFragment{∅}\@frag@name%
+  \else%
+    \dofragment@target{frag:#1}{\box0}%
+  \fi}
+
+% Display |...| as verbatim, teletype text.
+\DefineShortVerb{\|}
+
+\def\macroname#1{%
+  \expandafter\@macroname\string#1}
+\def\@macroname#1{}
+\def\defverb#1{%
+  \EA\def\EA#1\EA{\EA\protect\EA\UseVerb\EA{\macroname#1}}%
+  \EA\SaveVerb\EA{\macroname#1}}
+
+\let\idx@@heading\chapter
+
+%% Create a verbatim {code} environment which highlights strings
+%% and comments. Several unicode characters are hacked to replace
+%% the grabbed characters, since we can't escape them in the
+%% verbatim environment.
+\colorlet{comment}{gray}
+\colorlet{string}{red!100!black!90}
+\let\‘=‘
+\let\“=“
+\def\≔{≔}
+\catcode`＃=\active
+\catcode`\≔=\active
+\def\docodes{%
+  \catcode`\#=\active%
+  \catcode`“=\active%
+  \catcode`‘=\active}
+
+\def≔{\ensuremath{\Coloneqq}}
+\let＃=\#
+\begingroup
+  \docodes
+  \catcode`\#=\active%
+  \catcode`¶=6
+  \gdef\comment{\itshape\color{comment}\let“=\“\let‘=\‘\#}
+  \gdef\dodefineactive{%
+    \let#=\comment%
+    \gdef“¶¶1”{{\color{string}\“¶¶1”}}%
+    \gdef‘¶¶1’{{\color{string}\‘¶¶1’}}}
+\endgroup
+
+\DefineVerbatimEnvironment{code}{Verbatim}{xleftmargin=2em,gobble=2,%
+  codes={\docodes\catcode`\☺=0},%
+  defineactive={\dodefineactive}}
+
+%% Save code fragments for piecing together later
+\begingroup
+  \catcode`\@=0
+  @catcode`\\=12
+  @gdef@bcode{@detokenize{\begin{code}^^J}}
+  @gdef@ecode{@detokenize{\end{code}^^J}}
+  @catcode`@ =12@gdef@sp{ }
+@endgroup
+
+% Ripped from fancyverb
+% I'm currently rather unfond of it.
+\def\Fragment{\FV@Environment{}{Fragment}}
+\def\FVB@Fragment#1{%
+  \@bsphack
+  \begingroup
+    \FV@UseKeyValues
+    \gdef\Fragment@Name{#1}%
+    \xdef\Fragment@Prefix{\«*#1» \≔^^J}
+    \xdef\TheFragment{}
+    \def\FV@ProcessLine##1{%
+      \edef\frag{\detokenize{##1^^J}}%
+      \xdef\TheFragment{\TheFragment\frag}}%
+    \FV@Scan}
+\def\FVE@Fragment{%
+  \EA\global\EA\let
+  \csname SV@\Fragment@Name\endcsname\TheFragment%
+  \endgroup%
+  \EA\UseFragment\EA{\Fragment@Prefix}\Fragment@Name}
+\DefineVerbatimEnvironment{Fragment}{Fragment}{}
+
+\def\UseFragment#1#2{
+  \begingroup
+    \EA\let\EA\a\csname SV@#2\endcsname
+    \ifx\a\undefined\def\a{\ldots}\fi
+    \ifx\FV@EnvironName\relax%
+      \edef\a{\bcode\detokenize{++#1}\a\ecode}\else%
+      \edef\a{\detokenize{#1}\a}\fi%
+    \newtoks\tokens
+    \EA\tokens\EA{\a}
+    \everyeof{\noexpand}%
+    \scantokens\EA{\the\tokens}
+  \endgroup
+}
+
+%% Convenience defs for the various wmii commands, and a few
+%% others.
+\defverb\wmii|wmii|
+\defverb\wiIXmenu|wimii9menu|
+\defverb\wimenu|wimenu|
+\defverb\wmiir|wmiir|
+\def\ninep{{\lining 9P}}
+\def\POSIX{\textsc{POSIX}}
+\def\plannine{{\lining Plan 9}}
+\def\ICCCM#1{%
+  \@ICCCM#1@
+  \href{http://www.tronche.com/gui/x/icccm/sec-\@ICCCM@chap.html\#s-#1}{%
+    ICCCM \lining§#1}}
+\def\@ICCCM#1.#2@{\def\@ICCCM@chap{#1}}
+
+\makeatother
+
+\begin{document}
+\thispagestyle{empty}
+\leavevmode
+\vfill
+
+\begin{center}
+  \centerline{\includegraphics[width=2in]{../img/wmii.pdf}}
+
+  \vskip 1in
+
+  \LARGE
+  The \wmii\ User Guide
+
+  \vskip .5in
+
+  \Large
+  Kris Maglione \\[1em]
+  \lining
+  13 October 2009
+
+\end{center}
+
+\vfill
+
+\newpage
+
+\frontmatter
+
+\tableofcontents
+
+\newpage
+
+\include{license}
+
+\mainmatter
+
+\include{introduction}
+\include{gettingstarted}
+\include{customizing}
+
+\backmatter
+
+\printindex
+
+\end{document}

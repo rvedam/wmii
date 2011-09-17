@@ -1,0 +1,111 @@
+wmiir
+wmii-@VERSION@
+Oct, 2009
+
+%!includeconf: header.t2t
+
+= NAME =
+
+wmiir - The wmii 9P filesystem client
+
+= SYNOPSIS =
+
+wmiir [-a <address>] [-b] {create | ls [-dlp] | read | remove | write} <file> +
+wmiir [-a <address>] [-b] xwrite <file> <data> ... +
+wmiir -v
+
+= DESCRIPTION =
+
+`wmiir` is a simple 9P filesystem client which ships with `wmii`, and connects
+to its virtual filesystem by default. `wmiir` is most often used to query and
+issue commands to `wmii`, both from the command line and from its `sh`-based
+configuration scripts.
+
+Since the default encoding of 9P filesystems is UTF-8, `wmiir`
+assumes that all data read and written is text data and
+translates to or from your locale character encoding as
+necessary. When working with non-text data in a non-UTF-8
+locale, the _-b_ flag should be specified to disable this
+behavior.
+
+= ARGUMENTS =
+
+: -a
+        The address at which to connect to `wmii`.
+: -b
+	With the _-b_ flag, data that you intend to read or
+	write is treated as binary data.
+:
+= COMMANDS =
+
+The following commands deal with 9P filesystems.
+
+: create <file>
+        Creates a new file or directory in the filesystem. Permissions and
+        file type are inferred by `wmii`. The contents of the standard input
+        are written to the new file.
+: ls [-dlp] <path>
+        Lists the contents of <path>.
+
+        Flags:
+        >>
+        : -d
+                Don't list the contents of directories.
+        : -l
+                Long output. For each file, list its permissions, owner,
+                group, size (bytes), mtime, and name.
+        : -p
+                Print the full path to each file.
+        <<
+: read <file>
+        Reads the entire contents of a file from the filesystem. Blocks until
+        interrupted or EOF is received.
+
+        Synonyms: `cat`
+: remove <path>
+        Removes <path> from the filesystem.
+
+        Synonyms: `rm`
+: write <file>
+        Writes the contents of the standard input to <file>.
+: xwrite <file> <data> ...
+        Writes each argument after <file> to the latter.
+:
+
+Additionally, wmiir provides the following utility commands relevant
+to scripting wmii:
+
+: namespace
+	Prints the current wmii namespace directory, usually
+	equivalent to /tmp/ns.$USER.${DISPLAY%.0}, but possibly
+	different depending on the value of $NAMESPACE and
+	$WMII_NAMESPACE.
+
+	Synonyms: `ns`
+: setsid [-0 <argv0>] [-f] <command>
+	Executes the given command after setting the session id (see
+	setsid(2)). If _-0_ is given, the command is run with the
+	given value as argv[0]. For instance, to run sh as a login
+	shell, one might run
+
+```        wmiir setsid -0 -sh sh
+	If _-f_ is given, wmiir will fork into the background before
+	executing the command.
+: proglist [--] <directory> ...
+	Lists all executable commands in the given directories.
+
+= ENVIRONMENT =
+
+: $WMII_ADDRESS
+        The address at which to connect to wmii.
+: $NAMESPACE
+        The namespace directory to use if no address is
+        provided.
+:
+
+= SEE ALSO =
+wmii(1), libixp[2]
+
+[1] http://www.suckless.org/wiki/wmii/tips/9p_tips +
+[2] http://libs.suckless.org/libixp
+

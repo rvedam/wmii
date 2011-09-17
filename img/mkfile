@@ -1,0 +1,44 @@
+MKSHELL=rc
+path=$PLAN9/bin $path
+
+eps = wmii.eps
+calc = rc -c 'echo 4k $* p | dc}
+
+iconwidth  = 16
+imagewidth = 154
+
+%.pdf: %.eps
+	sh epstopdf $stem.eps
+
+%-small.png: %.eps
+	epsbox = `{sed -n '/^%%BoundingBox:/{s/.*://p; q;}' $stem.eps}
+	iconscale = `{*=$epsbox; $calc $iconwidth $3 $1 -/}
+	iconheight = `{*=$epsbox; $calc $4 $2 - $iconscale '*'}
+	* = `{hoc -e'-('$epsbox')'}
+	x = $1
+	y = $2
+	gs -q -dBATCH -dNOPAUSE -s'DEVICE=pngalpha' -s'OutputFile='$target -g$iconwidth^x^$iconheight - <<!
+		$iconscale $iconscale scale
+		$x $y translate
+		($eps) run
+		showpage
+		quit
+	!
+	optipng -fix $target
+
+%.png: %.eps
+	epsbox = `{sed -n '/^%%BoundingBox:/{s/.*://p; q;}' $stem.eps}
+	imagescale = `{*=$epsbox; $calc $imagewidth $3 $1 -/}
+	imageheight = `{*=$epsbox; $calc $4 $2 - $imagescale '*'}
+	* = `{hoc -e'-('$epsbox')'}
+	x = $1
+	y = $2
+	gs -q -dBATCH -dNOPAUSE -s'DEVICE=pngalpha' -s'OutputFile='$target -g$imagewidth^x^$imageheight - <<!
+		$imagescale $imagescale scale
+		$x $y translate
+		($eps) run
+		showpage
+		quit
+	!
+	optipng -fix $target
+

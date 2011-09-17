@@ -1,0 +1,18 @@
+syntax: regexp
+(^|/)\.((.*\.)?sw.|depend|hgignore)$
+(^|/)(tags|mkfile|diff)$
+\.([oa]|out|o_pic|so|pyc|pyo|diff)$
+\.(diff|orig|rej|bak)$
+\.(aux|idx|ilg|ind|log|toc)$
+^cmd/osd(/|$)
+^cmd/x11/(stfo|wiclick)\.
+^(pkg|src)/
+^doxy
+/bak/
+_dummy\.h$
+syntax: glob
+config.local.mk
+cmd/menu/bindings.c
+*.pkg.tar.?z
+alternative_wmiircs/python/build/
+alternative_wmiircs/python/dist/

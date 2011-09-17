@@ -1,0 +1,515 @@
+WMII
+wmii-@VERSION@
+2010 June
+
+%!includeconf: header.t2t
+
+= NAME =
+
+wmii - Window Manager Improved²
+
+= SYNOPSIS =
+
+wmii [-a <address>] [-r <wmiirc>] +
+wmii -v
+
+= DESCRIPTION =
+
+== Overview ==
+
+`wmii` is a dynamic window manager for X11. In contrast to
+static window management the user rarely has to think about how
+to organize windows, no matter what he is doing or how many
+applications are used at the same time.  The window manager
+adapts to the current environment and fits to the needs of the
+user, rather than forcing him to use a preset, fixed layout and
+trying to shoehorn all windows and applications into it.
+
+`wmii` supports classic and tiled window management with
+extended keyboard and mouse control. Classic window management
+arranges windows in a floating layer in which tyen can be moved
+and resized freely. Tiled window management arranges windows in
+vertical columns.  Each column holds an arbitrary number
+arbitrary windows and arranges them vertically in a
+non-overlapping manner. They can then be moved and resized,
+among and within columns, at will.
+
+`wmii` provides a virtual filesystem which represents the
+internal state similar to the procfs of Unix operating systems.
+Modifying this virtual filesystem results in changing the state
+of the window manager. The virtual filesystem service can be
+accessed through 9P-capable client programs, like
+wmiir(1).  This allows simple and powerful remote control
+of the core window manager.
+
+== Command Line Arguments ==
+
+: -a <address>
+        Specifies the address on which `wmii` should listen for
+        connections. The address takes the form
+        `<protocol>!<address>`. The default is of the form:
+
+```     unix!/tmp/ns.$USER.${DISPLAY%.0}/wmii
+        which opens a unix socket per Plan 9 Port conventions. To
+        open a TCP socket, listening at port 4332 on the loopback
+        interface, use:
+
+```     tcp!localhost!4332
+        $WMII_NAMESPACE is automatically set to this value.
+
+: -r <wmiirc>
+        Specifies which rc script to run. If <wmiirc> consists of a
+        single argument, $WMII_CONFPATH is searched before $PATH.
+        Otherwise, it is passed to the shell for evaluation. The
+        environment variables $WMII_ADDRESS and $WMII_CONFPATH are
+        preset for the script.
+:
+== Terminology ==
+
+: Display
+        A running X server instance consisting of input
+        devices and screens.
+: Screen
+        A physical or virtual (Xinerama or Xnest(1))
+        screen of an X display.
+: Window
+        A (rectangular) drawable X object which is
+        displayed on a screen, usually an application window.
+: Client
+        An application window surrounded by a frame window
+        containing a border and a titlebar.
+: Floating layer
+        A screen layer of `wmii` on top of all other layers,
+        where clients are arranged in a classic (floating)
+        manner.  They can be resized or moved freely.
+: Managed layer
+        A screen layer of `wmii` underneath the floating layer,
+        where clients are arranged in a non-overlapping
+        (managed) manner.  Here, the window manager dynamically
+        assigns each client a size and position.  The managed
+        layer consists of columns.
+: Tag
+        Alphanumeric strings which can be assigned to a
+        client. This provides a mechanism to group clients with
+        similar properties. Clients can have one tag, e.g.
+        _work_, or several tags, e.g.  _work+mail_.
+        Tags are separated with the _+_ character.
+: View
+        A set of clients containing a specific tag, quite
+        similar to a workspace in other window managers. It
+        consists of the floating and managed layers.
+: Column
+        A column is a screen area which arranges clients
+        vertically in a non-overlapping way. Clients can be
+        moved and resized between and within columns freely.
+: Bar
+        The bar at the bottom of the screen displays a label
+        for each view and allows the creation of arbitrary
+        user-defined labels.
+: Event
+        An event is a message which can be read from a
+        special file in the filesystem of `wmii`, such as a
+        mouse button press, a key press, or a message written by
+        a different 9P-client.
+:
+
+== Basic window management ==
+
+Running a raw `wmii` process without a wmiirc(1) script provides
+basic window management capabilities.  However, to use it
+effectively, remote control through its filesystem interface is
+necessary.  Without such a script, it is only possible to move
+and resize clients with the mouse, but not to change their tags
+or to switch views.  Other interactions, such as customizing the
+style, killing or retagging clients, and grabbing keys, cannot
+be achieved without accessing the filesystem.
+
+The filesystem can be accessed by connecting to the //address//
+of `wmii` with any 9P-capable client, such as wmiir(1)
+
+== Actions ==
+
+The default configuration provides for a special menu of
+actions. These consist of either shell scripts in $WMII_CONFPATH
+or action definitions included in wmiirc.
+
+Here is a list of the default actions:
+
+| exec     | Replace the window manager with another program
+| quit     | Leave the window manager nicely
+| rehash   | Refresh the program list
+| showkeys | Display a list of key bindings recognized by wmii
+| status   | Periodically print date and load average to the bar
+| welcome  | Display a welcome message that contains the wmii tutorial
+
+== Default Key Bindings ==
+
+All of the provided `wmiirc` scripts accept at least the following key
+bindings. They should also provide a `showkeys` action to open a
+key binding quick-reference.
+
+=== Moving Around ===
+
+|| Key          | Action
+| Mod-h         | Move to a window to the _left_ of the one currently focused
+| Mod-l         | Move to a window to the _right_ of the one currently focused
+| Mod-j         | Move to the window _below_ the one currently focused
+| Mod-k         | Move to a window _above_ the one currently focused
+| Mod-space     | Toggle between the managed and floating layers
+| Mod-t <tag>   | Move to the view of the given <tag>
+| Mod-n         | Move to the next view
+| Mod-b         | Move to the previous view
+| Mod-//[0-9]// | Move to the view with the given number
+
+=== Moving Things Around ===
+
+|| Key                 | Action
+|  Mod-Shift-h         | Move the current window _window_ to a column on the _left_
+|  Mod-Shift-l         | Move the current window to a column on the _right_
+|  Mod-Shift-j         | Move the current window below the window beneath it.
+|  Mod-Shift-k         | Move the current window above the window above it.
+|  Mod-Shift-space     | Toggle the current window between the managed and floating layer
+|  Mod-Shift-t <tag>   | Move the current window to the view of the given <tag>
+|  Mod-Shift-//[0-9]// | Move the current window to the view with the given number
+
+=== Miscellaneous ===
+
+|| Key               | Action
+|  Mod-m             | Switch the current column to _max mode_
+|  Mod-s             | Switch the current column to _stack mode_
+|  Mod-d             | Switch the current column to _default mode_
+|  Mod-Shift-c       | `Kill` the selected client
+|  Mod-p <program>   | `Execute` <program>
+|  Mod-a <action>    | `Execute` the named <action
+|  Mod-Enter         | `Execute` an `@TERMINAL@`
+
+= Configuration =
+
+If you feel the need to change the default configuration, then
+customize (as described above) the `wmiirc` action.  This
+action is executed at the end of the `wmii` script and does
+all the work of setting up the window manager, the key bindings,
+the bar labels, etc.
+
+== Filesystem ==
+
+Most aspects of `wmii` are controlled via the filesystem.  It is
+usually accessed via the wmiir(1) command, but it can be
+accessed by any ``9P``, including plan9port's 9P[1], and can be
+mounted natively on Linux via v9fs[1], and on Inferno (which man
+run on top of Linux). All data in the filesystem, including
+filenames, is UTF-8 encoded. However, when accessed via
+wmiir(1), text is automatically translated to and from your
+locale encoding.
+
+The filesystem is, as are many other 9P filesystems, entirely
+synthetic. The files exist only in memory, and are not written
+to disk. They are generally initiated on wmii startup via a
+script such as wmiirc. Several files are used to issue commands,
+others simply act as if they were ordinary files (their contents
+are updated and returned exactly as written), though writing
+them has side-effects (such as changing key bindings). A
+description of the filesystem layout and control commands
+follows.
+
+== Hierarchy ==
+
+: /
+        Global control files
+: /client/_*_/
+        Client control files
+: /tag/_*_/
+        View control files
+: /lbar/, /rbar/
+        Files representing the contents of the bottom bar
+:
+
+== The / Hierarchy ==
+
+: colrules
+        The _colrules_ file contains a list of
+        rules which affect the width of newly created columns.
+        Rules have the form:
+
+```     /<regex>/ -> <width>[+<width>]*
+        Where,
+
+```     <width> := <percent of screen> | <pixels>px
+        When a new column, <n>, is created on a view whose name
+        matches <regex>, it is given the <n>th supplied <width>.
+        If there is no <n>th width, it is given 1/<ncol>th of the
+        screen.
+
+: rules
+        PROVISIONAL
+
+        The _rules_ file contains a list of rules that may be used
+        to automatically set properties of new clients. Rules are
+        specified as:
+
+```     /<regex>/ <key>=<value> ...
+        where each <key> represents a command in the clients _ctl_
+        file, and each <value> represents the value to assign to it.
+        The rules are applied when the client is first started and
+        the contents of the _props_ file match the regular
+        expression <regex>.
+
+        Additionally, the following keys are accepted and have
+        special meaning:
+
+        >>
+        : continue
+                Normally, when a matching rule is encountered, rule
+                matching stops. When the continue key is provided
+                (with any value), matching continues at the next
+                rule.
+        : force-tags=<tags>
+                Like _tags_, but overrides any settings obtained
+                obtained from the client's group or from the
+                **\_WMII_TAGS** window property.
+        <<
+: keys
+        The _keys_ file contains a list of keys which
+        `wmii` will grab. Whenever these key combinations
+        are pressed, the string which represents them are
+        written to '/event' as: Key <string>
+: event
+        The _event_ file never returns EOF while
+        `wmii` is running. It stays open and reports events
+        as they occur. Included among them are:
+        >>
+        : [Not]Urgent <client> [Manager|Client]
+                <client>'s urgent hint has been set or
+                unset. The second arg is [Client] if it's
+                been set by the client, and [Manager] if
+                it's been set by `wmii` via a control
+                message.
+        : [Not]UrgentTag <tag> [Manager|Client]
+                A client on <tag> has had its urgent hint
+                set, or the last urgent client has had its
+                urgent hint unset.
+        : Client<Click|MouseDown> <client> <button>
+                A client's titlebar has either been clicked or
+                has a button pressed over it.
+        : [Left|Right]Bar[Click|MouseDown] <button> <bar>
+                A left or right bar has been clicked or has a
+                button pressed over it.
+        :
+        <<
+
+        For a more comprehensive list of available events, see
+        _wmii.pdf_[2]
+
+: ctl
+        The _ctl_ file takes a number of messages to
+        change global settings such as color and font, which can
+        be viewed by reading it. It also takes the following
+        commands:
+        >>
+        : quit
+                Quit `wmii`
+        : exec <prog>
+                Replace `wmii` with <prog>
+        : spawn <prog>
+                Spawn a new program, as if by the _-r_ flag.
+        :
+        <<
+:
+
+== The /client/ Hierarchy ==
+
+Each directory under '/client/' represents an X11 client.
+Each directory is named for the X window id of the window the
+client represents, in the form that most X utilities recognize.
+The one exception is the special 'sel' directory, which
+represents the currently selected client.
+
+: ctl
+        When read, the 'ctl' file returns the X window id
+        of the client. The following commands may be written to
+        it:
+        >>
+        : allow <flags>
+                The set of unusual actions the client is allowed to
+                perform, in the same format as the tag set.
+                >>
+                : activate
+                        The client is allowed to activate
+                        itself – that is, focus its window and,
+                        as the case may require, uncollapse it
+                        and select a tag it resides on. This
+                        flag must be set on a client if you wish
+                        it able to activate itself from the
+                        system tray.
+                <<
+        : floating <on | off | always | never>
+                Defines whether this client is likely to float when
+                attached to a new view. Ordinarilly, the value
+                changes automatically whenever the window is
+                moved between the floating and managed layers.
+                However, setting a value of _always_ or _never_
+                overrides this behavior. Additionally, dialogs,
+                menus, docks, and splash screens will always
+                float unless this value is set to _never_.
+        : fullscreen <on | off | toggle>
+                Sets the client's fullscreen state.
+        : group <group id>
+                The client's group ID, or 0 if not part of a group.
+                Clients tend to open with the same tags and in the
+                same columns as the last active member of their
+                group. Setting this property is only useful when
+                done via the rules file.
+        : kill
+                Close the client's window.
+        : pid
+                Read-only value of the PID of the program that
+                owns the window, if the value is available and
+                the process is on the same machine as wmii.
+        : slay
+                Forcibly kill the client's connection to the X
+                server, closing all of its windows. Kill the parent
+                process if the client's PID is available.
+        : tags <tags>
+                The client's tags. The same as the tags file.
+        : urgent <on | off | toggle>
+                Set or unset the client's urgent hint.
+        <<
+
+: label
+        Set or read a client's label (title).
+: props
+        Returns a clients class and label as:
+        <instance>:<class>:<label>.
+: tags
+        Set or read a client's tags. Tags are separated by
+        **+**, **-**, or **^**. Tags beginning with **+** are
+        added, while those beginning with **-** are removed and
+        those beginning with **^** are toggled.  If the tag
+        string written begins with **+**, **^**, or **-**, the
+        written tags are added to or removed from the client's
+        set, otherwise the set is overwritten.
+:
+
+== The /tag/ Hierarchy ==
+
+Each directory under '/tag/' represents a view, containing
+all of the clients with the given tag applied. The special
+'sel' directory represents the currently selected tag.
+
+: ctl
+        The 'ctl' file can be read to retrieve the name
+        of the tag the directory represents, or written with the
+        following commands:
+        >>
+        : select
+                Select a client:
+                    select [left|right|up|down] +
+                    select [<row number>|sel] [<frame number>] +
+                    select client <client>
+        : send
+                Send a client somewhere:
+                >>
+                : send [<client>|sel] [up|down|left|right]
+                : send [<client>|sel] <area>
+                    Send <client> to the _n_th <area>
+                : send [<client>|sel] toggle
+                    Toggle <client> between the floating and managed layer.
+                <<
+        : swap
+                Swap a client with another. Same syntax as send.
+
+        : grow
+                Grow or shrink a client.
+
+```    grow <frame> <direction> [<amount>]
+        : nudge
+                Nudge a client in a given direction.
+
+```    grow <frame> <direction> [<amount>]
+        :
+        <<
+        Where the arguments are defined as follows:
+        >>
+        : area
+            Selects a column or the floating area.
+
+```    area        ::= <area_spec> | <screen_spec>:<area_spec>
+            When <screen_spec> is omitted and <area_spec> is not "sel",
+            0 is assumed. "sel" by itself represents the selected client no
+            matter which screen it is on.
+
+```    area_spec   ::= "~" | <number> | "sel"
+            Where "~" represents the floating area and <number> represents a column
+            index, starting at one.
+
+```    screen_spec ::= <number>
+            Where <number> representes the 0-based Xinerama screen number.
+
+        : frame
+            Selects a client window.
+
+```    frame ::= <area> <index> | <area> sel | client <window-id>
+            Where <index> represents the nth frame of <area> or <window-id> is
+            the X11 window id of the given client.
+
+        : amount
+            The amount to grow or nudge something.
+
+```    amount ::= <number> | <number>px
+            If "px" is given, <number> is interperated as an exact pixel count.
+            Otherwise, it's interperated as a "reasonable" amount, which is
+            usually either the height of a window's title bar, or its sizing
+            increment (as defined by X11) in a given direction.
+        <<
+: index
+        Read for a description of the contents of a tag.
+:
+
+
+== The /rbar/, /lbar/ Hierarchy ==
+
+The files under '/rbar/' and '/lbar/' represent the
+items of the bar at the bottom of the screen. Files under
+'/lbar/' appear on the left side of the bar, while those
+under '/rbar/' appear on the right, with the leftmost item
+occupying all extra available space. The items are sorted
+lexicographically.
+
+The files may be read or written to obtain or alter the colors
+and text of the bars. The format is similar to the various _ctl_
+files and should be self explanitory.
+
+= FILES =
+
+: /tmp/ns.$USER.${DISPLAY%.0}/wmii
+        The wmii socket file which provides a 9P service.
+: @GLOBALCONF@
+        Global action directory.
+: @LOCALCONF@
+        User-specific action directory. Actions are first searched here.
+:
+
+= ENVIRONMENT =
+
+: $HOME, $DISPLAY
+        See the section **FILES** above.
+:
+The following variables are set and exported within `wmii` and
+thus can be used in actions:
+
+: $WMII_ADDRESS
+        The address on which `wmii` is listening.
+: $WMII_CONFPATH
+        The path that wmii searches for its configuration
+        scripts and actions.
+: $NAMESPACE
+        The namespace directory to use if no address is provided.
+:
+= SEE ALSO =
+wimenu(1), wmii9menu(1), witray(1), wmiir(1), wihack(1) +
+@DOCDIR@/wmii.pdf
+@DOCDIR@/FAQ
+
+[1] http://www.suckless.org/wiki/wmii/tips/9p_tips +
+[2] @DOCDIR@/wmii.pdf
+

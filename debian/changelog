@@ -1,0 +1,5 @@
+wmii-hg (2728) unstable; urgency=low
+
+  * Remove long deprecated special treatment of the '!' tag.
+
+ -- Kris Maglione <kris@suckless.org>  Tue, 15 Jun 2010 15:13:12 -0400
